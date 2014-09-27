@@ -2,3 +2,5 @@ SharpNet/obj/
 SharpNet/bin/Debug/Cudafy.NET.dll
 SharpNet/bin/
 *.suo
+Criteo/bin/
+Criteo/obj/

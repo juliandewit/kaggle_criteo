@@ -35,7 +35,7 @@ namespace Criteo
 
                 // First process the CSV data into "zipped binary data" useful for when we have to reprocess. Faster and more compact..
                 PreprocessingRawValues.ConvertCSVToBinary(csvTrainPath, binTrainPath);
-                PreprocessingRawValues.ConvertCSVToBinary(csvTrainPath, binTrainPath);
+                PreprocessingRawValues.ConvertCSVToBinary(csvTestPath, binTestPath);
 
                 // Recode categorical values. MISSING = missing, TRAINNOTTEST = in trainset, not testset, TESTNOTTRAIN = in testset, not trainset
                 // LOWFREQUENCY = When a value occurs below a certain threshold, it is recoded to this value.

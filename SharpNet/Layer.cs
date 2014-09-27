@@ -181,7 +181,6 @@ namespace SharpNet
             if (biasWeights.Length != biasWeightsUpdates.Length) throw new Exception("BiasWeights count <> BiasWeightupdates count " + weights.Length + "<>" + weightUpdates.Length);
 
             // Add momentun to the weight updates
-            
             var inputLayer = PreviousLayer as DataLayer;
             var mom = momentum;
             var sparseInput = (inputLayer != null) && (inputLayer.IsSparse);
@@ -189,9 +188,6 @@ namespace SharpNet
             {
                 momentum = 0f;
             }
-
-            //_gpuModule.UpdateWeights(this, learnRate, momentum);
-
             
             if (momentum != 0f)
             {
@@ -210,25 +206,8 @@ namespace SharpNet
                 }
             }
             
-            // Multiply by learnrate and update weights
-            //if (sparseInput)
-            //{
-            //    this._gpuModule.UpdateWeightsSparse(this, minibatchLearnRate);
-            //}
-            //else
-            //{
-            //    this._gpuModule.Blas.Blas.AXPY(minibatchLearnRate, weightUpdates.GPUArray, weights.GPUArray);
-            //}
-            
-            
             this._gpuModule.Blas.Blas.AXPY(minibatchLearnRate, weightUpdates.GPUArray, weights.GPUArray);
             this._gpuModule.Blas.Blas.AXPY(minibatchBiasLearnRate, biasWeightsUpdates.GPUArray, biasWeights.GPUArray); 
-
-            // Store weightupdates in lastweightupdates..
-            //biasWeightsUpdates.CopyToHost();
-            //lastBiasWeightUpdates.CopyToHost();
-            //weightUpdates.CopyToHost();
-            //lastWeightUpdates.CopyToHost();
 
             _Arrays[ArrayName.LastWeightUpdates] = weightUpdates;
             _Arrays[ArrayName.WeightUpdates] = lastWeightUpdates;
