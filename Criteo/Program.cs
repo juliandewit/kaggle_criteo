@@ -29,37 +29,55 @@ namespace Criteo
                                                    // When you change the value you need to preprocess again..
             Constants.InitOneHotIndices();
 
-            var preprocess = true; // You don't need to preprocess every run.. also when preprocessing, you don't need to do every step every time..
-            if (preprocess)
+            // *** Remove processd files to reprocess ***
+
+            // First process the CSV data into "zipped binary data" useful for when we have to reprocess. Faster and more compact..
+            if (!File.Exists(binTrainPath))  PreprocessingRawValues.ConvertCSVToBinary(csvTrainPath, binTrainPath);
+            if (!File.Exists(binTestPath))  PreprocessingRawValues.ConvertCSVToBinary(csvTestPath, binTestPath);
+
+            // Recode categorical values. MISSING = missing, TRAINNOTTEST = in trainset, not testset, TESTNOTTRAIN = in testset, not trainset
+            // LOWFREQUENCY = When a value occurs below a certain threshold, it is recoded to this value.
+            if ((!File.Exists(recodedTrainPath)) || (!File.Exists(recodedTestPath))) 
             {
-
-                // First process the CSV data into "zipped binary data" useful for when we have to reprocess. Faster and more compact..
-                PreprocessingRawValues.ConvertCSVToBinary(csvTrainPath, binTrainPath);
-                PreprocessingRawValues.ConvertCSVToBinary(csvTestPath, binTestPath);
-
-                // Recode categorical values. MISSING = missing, TRAINNOTTEST = in trainset, not testset, TESTNOTTRAIN = in testset, not trainset
-                // LOWFREQUENCY = When a value occurs below a certain threshold, it is recoded to this value.
                 var frequencyFilter = Constants.FREQUENCY_FILTER_AGGRESSIVE; // Vary for ensembling, Medium or mild results in more featurevalues = more GPU mem usage, potentially better accuracy but also potentially overfitting. Make sure you also increase HASH_SIZE
                 PreprocessingRawValues.RecodeCategoricalValues(binTrainPath, binTestPath, recodedTrainPath, recodedTestPath, frequencyFilter);
+            }
 
-                // Now One-Hot encode the raw records. (actually it one-hot encodes the categories with few values and hashes the categories with many values)
-                // This is probably way too complicated. Perhaps we could hash everything. Even the numeric values.
-                var encodeMissingValues = true;  // vary for ensembling
-                var logTransformNumerics = true; // vary for ensembling
-                var encodeTestNotTrainAs = Constants.VALUE_MISSING; // vary for ensembling
+            // Now One-Hot encode the raw records. (actually it one-hot encodes the categories with few values and hashes the categories with many values)
+            // This is probably way too complicated. Perhaps we could hash everything. Even the numeric values.
+            var encodeMissingValues = true;  // vary for ensembling
+            var logTransformNumerics = true; // vary for ensembling
+            var encodeTestNotTrainAs = Constants.VALUE_MISSING; // vary for ensembling
+
+            if ((!File.Exists(oneHotTrainPath)) || (!File.Exists(oneHotTestPath)))
+            {
                 PreprocessingRawToOneHot.ConvertRawToOneHot(recodedTrainPath, recodedTestPath, oneHotTrainPath, oneHotTestPath, encodeMissingValues, encodeTestNotTrainAs, logTransformNumerics);
+            }
 
-                // Now scale the numeric values. This leads to faster convergence..
+            // Now scale the numeric values. This leads to faster convergence..
+            if ((!File.Exists(scaledTrainPath)) || (!File.Exists(scaledTestPath)))
+            {
                 PreprocessingScale.ScaleNumericValues(oneHotTrainPath, oneHotTestPath, scaledTrainPath, scaledTestPath);
             }
             
             // We create an "ensemble" of a relunet and a maxout net.
 
             var gpuModule = new GPUModule();
+            gpuModule.InitGPU();
             var learnRate = 0.02f; // 0.04 also worked fine for me..
             var momentum = 0.5f; // Did not play with this much since 1st layer is without momentum for performance reasons.
             var epochsBeforeMergeHoldout = 30; // When do we add the holdout set to the trainset (no more validation information)
             var totalEpochs = 50; // How many epochs to train.. Usually I saw no improvement after 50
+
+            var maxoutNet = CriteoNet.CreateNetworkMaxout(gpuModule, Constants.MINIBATCH_SIZE); // Example network that worked fine
+            Train(scaledTrainPath, scaledTestPath, maxoutNet, learnRate, momentum, epochsBeforeMergeHoldout, totalEpochs);
+            // Make a net with smaller minibatchsize for submission..
+            var paramMaxoutPath = Path.Combine(dataDir, "paramsMaxout.xml");
+            var submissionMaxoutPath = Path.Combine(dataDir, "submissionMaxout.csv");
+            maxoutNet.SaveWeightsAndParams(paramMaxoutPath);
+            maxoutNet = CriteoNet.CreateNetworkRelu(gpuModule, 15);
+            maxoutNet.LoadStructureWeightsAndParams(paramMaxoutPath);
+            MakeSubmission(maxoutNet, scaledTestPath, submissionMaxoutPath, batchSize: 15);
 
             var reluNet = CriteoNet.CreateNetworkRelu(gpuModule, Constants.MINIBATCH_SIZE); // Example network that worked fine
             Train(scaledTrainPath, scaledTestPath, reluNet, learnRate, momentum, epochsBeforeMergeHoldout, totalEpochs);
@@ -71,15 +89,7 @@ namespace Criteo
             reluNet.LoadStructureWeightsAndParams(paramReluPath);
             MakeSubmission(reluNet, scaledTestPath, submissionReluPath, batchSize: 15);
 
-            var maxoutNet = CriteoNet.CreateNetworkMaxout(gpuModule, Constants.MINIBATCH_SIZE); // Example network that worked fine
-            Train(scaledTrainPath, scaledTestPath, reluNet, learnRate, momentum, epochsBeforeMergeHoldout, totalEpochs);
-            // Make a net with smaller minibatchsize for submission..
-            var paramMaxoutPath = Path.Combine(dataDir, "paramsMaxout.xml");
-            var submissionMaxoutPath = Path.Combine(dataDir, "submissionMaxout.csv");
-            maxoutNet.SaveWeightsAndParams(paramReluPath);
-            maxoutNet = CriteoNet.CreateNetworkRelu(gpuModule, 15);
-            maxoutNet.LoadStructureWeightsAndParams(paramMaxoutPath);
-            MakeSubmission(maxoutNet, scaledTestPath, submissionMaxoutPath, batchSize: 15);
+
 
             // Now make the combined submission
             var submissionCombinedPath = Path.Combine(dataDir, "submissionCombined.csv");

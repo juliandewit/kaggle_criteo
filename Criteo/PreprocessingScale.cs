@@ -33,7 +33,7 @@ namespace Criteo
                 var writeNo = 0;
                 foreach (var rec in OneHotRecord.EnumerateBinLines(srcPath))
                 {
-                    for (var i = 0; i < RawRecord.NUMERIC_COUNT - 2; i++)
+                    for (var i = 0; i < RawRecord.NUMERIC_COUNT; i++)
                     {
                         var val = rec.NumericData[i];
                         if (float.IsNaN(val))

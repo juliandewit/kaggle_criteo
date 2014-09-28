@@ -18,6 +18,7 @@ namespace Criteo
             _hashIndices = new Dictionary<string, int>();
             _categoricalIdices = new Dictionary<int, Dictionary<int, int>>();
             ConvertRawToOneHot(rawTrainBinSrcPath, oneHotTrainDstPath, false, encodeMissingValues, encodeTestNotrainAs, logTransformNumericValues);
+            ConvertRawToOneHot(rawTestBinSrcPath, oneHotTestDstPath, true, encodeMissingValues, encodeTestNotrainAs, logTransformNumericValues);
         }
 
         protected static void ConvertRawToOneHot(string rawSrcPath, string oneHotDstPath, bool isTestSet, bool encodeMissingValues = true, int encodeTestNotrainAs = Constants.VALUE_MISSING, bool logTransformNumericValues = false)

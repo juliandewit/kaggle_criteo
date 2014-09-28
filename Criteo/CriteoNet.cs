@@ -12,7 +12,7 @@ namespace Criteo
         public static Network CreateNetworkRelu(GPUModule module, int minibatchSize)
         {
             var net = new Network(module, minibatchSize: minibatchSize);
-            net.AddInputLayer(Constants.TOTAL_VALUE_COUNT, minibatchSize * RawRecord.FEATURE_COUNT * 2);
+            net.AddInputLayer(Constants.TOTAL_VALUE_COUNT, sparseDataSize: minibatchSize * RawRecord.FEATURE_COUNT * 2);
             net.AddLabelLayer(1);
             var fc1 = net.AddFullyConnectedLayer(128);
             fc1.Weights.InitValuesUniformCPU(0.1f);
@@ -34,7 +34,7 @@ namespace Criteo
         public static Network CreateNetworkMaxout(GPUModule module, int minibatchSize)
         {
             var net = new Network(module, minibatchSize: minibatchSize);
-            net.AddInputLayer(Constants.TOTAL_VALUE_COUNT, minibatchSize * RawRecord.FEATURE_COUNT * 2);
+            net.AddInputLayer(Constants.TOTAL_VALUE_COUNT, sparseDataSize: minibatchSize * RawRecord.FEATURE_COUNT * 2);
             net.AddLabelLayer(1);
             
             var fc1 = net.AddFullyConnectedLayer(128);

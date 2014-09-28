@@ -506,7 +506,7 @@ namespace SharpNet
         }
 
         [Cudafy]
-        public static void MultiplySparseGPU(GThread thread, int kernelCount, int[] indicesA, float[] valuesA, int nonzeroCountA, int colCountA, float[] B, int colCountB, float[] C, int transposeA)
+        public static void MultiplySparseGPU2(GThread thread, int kernelCount, int[] indicesA, float[] valuesA, int nonzeroCountA, int colCountA, float[] B, int colCountB, float[] C, int transposeA)
         {
             var index = (thread.blockIdx.x * thread.blockDim.x) + thread.threadIdx.x;
             while (index < kernelCount)
@@ -524,7 +524,7 @@ namespace SharpNet
                     colA = tmp;
                 }
 
-                var valB = B[colA * colCountB + colB]; 
+                var valB = B[colA * colCountB + colB];
                 var mul = value * valB;
                 var indexC = rowA * colCountB + colB;
 
