@@ -2,7 +2,7 @@ Kaggle Criteo
 =============
 
 This is the software for the kaggle criteo challenge that ended up at the 4th place.
-The algorithm is a GPU based "deep" neural network. Multiple models were trained using varied types op preprocessing and network architectures. The models were averaged into one final model.
+The algorithm is a GPU based "deep" neural network. Multiple models were trained using varied types of preprocessing and network architectures. The models were averaged into one final model.
 
 ##### The software
 The software is written in c# .Net framework 4.5 using VS 2012.
