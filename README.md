@@ -1,7 +1,7 @@
 Kaggle Criteo challenge 4th place solution
 =============
 
-Software for the kaggle criteo challenge that ended up at the 4th place.
+This is the software for the kaggle criteo challenge that ended up at the 4th place.
 The algorithm is a GPU based "deep" neural network. Multiple models were trained using varied types op preprocessing and network architectures. The models were averaged into one final model.
 
 ##### The software
