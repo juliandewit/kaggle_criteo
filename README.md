@@ -18,7 +18,7 @@ With the cudafy tools you can check if everything is in working order. If so, co
 ##### Running
 First of all you need a 64bit windows OS.
 The project was done on a workstation with 32Gb memory. Perhaps it will still run with a little bit less.
-Propably 16Gb is not enough. The problem is that training is done with the complete dataset in memory for high throughput.
+Most likely 16Gb is not enough. The problem is that training is done with the complete dataset in memory for high throughput.
 Last but not least you need a recent GPU board with cuda compute capability 3.
 
 
