@@ -1,4 +1,4 @@
-kaggle_criteo
+Kaggle Criteo challenge 4th place solution
 =============
 
 Software for the kaggle criteo challenge that ended up at the 4th place.
