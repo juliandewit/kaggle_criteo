@@ -66,13 +66,15 @@ namespace Criteo
             var learnRate = 0.03f; // 0.01 - 0.04 also worked fine for me, 0.04 was the fastest.
             var momentum = 0.5f; // Did not play with this much since 1st layer is without momentum for performance reasons.
             var epochsBeforeMergeHoldout = 15; // When do we add the holdout set to the trainset (no more validation information after this)
-            var totalEpochs = 20; // How many epochs to train.. Usually I saw no improvement after 40
+            var totalEpochs = 5; // How many epochs to train.. Usually I saw no improvement after 40
             var trainRecords = OneHotRecordReadOnly.LoadBinary(scaledTrainPath);
 
             var reluNet = CriteoNet.CreateNetworkRelu(gpuModule, Constants.MINIBATCH_SIZE); // Example network that worked fine
             Train(trainRecords, reluNet, learnRate, momentum, epochsBeforeMergeHoldout, totalEpochs);
             var submissionReluPath = Path.Combine(dataDir, "submissionRelu.csv");
+            reluNet.SaveWeightsAndParams(dataDir, "relunet");
             MakeSubmission(reluNet, scaledTestPath, submissionReluPath);
+
             
             var maxoutNet = CriteoNet.CreateNetworkMaxout(gpuModule, Constants.MINIBATCH_SIZE); // Example network that worked fine
             Train(trainRecords, maxoutNet, learnRate, momentum, epochsBeforeMergeHoldout, totalEpochs);
