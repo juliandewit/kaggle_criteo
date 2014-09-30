@@ -29,7 +29,7 @@ namespace Criteo
         {
             _network.TrainDataProvider = _trainDataProvider;
             _network.TestDataProvider = _testDataProvider;
-            _network.SamplesPerMovingAverage = 40;
+            _network.SamplesPerMovingAverage = 80;
             _network.CopyToGpu();
             var epochNo = 0;
             var batchNo = 0;
@@ -46,8 +46,7 @@ namespace Criteo
                 {
                     Console.WriteLine("Merging holdout set to trainset");
                     pretest = false;
-                    TrainProvider._records.AddRange(TrainProvider._records);
-                    learnRate /= 2f; // Lower learnrate a bit
+                    TrainProvider._records.AddRange(TestProvider._records);
                 }
                 
                 _network.Calculate(train: true);
@@ -96,17 +95,17 @@ namespace Criteo
                 }
             }
             var logLoss = sum / (double)recordCount;
-
+            var averageLoss = _network.RegisterLoss(0, (float)logLoss, train: !test); 
 
             var fNo = (firstTestBatch.EpocNo + "." + firstTestBatch.BatchNo).PadRight(10);
             var txt = (test) ? "Holdout" : "Train";
-            if (logLoss < 0.44f) Console.ForegroundColor = ConsoleColor.Green;
-            if (logLoss > 0.44f) Console.ForegroundColor = ConsoleColor.Yellow;
-            if (logLoss > 0.45f) Console.ForegroundColor = ConsoleColor.White;
-            if (logLoss > 0.47f) Console.ForegroundColor = ConsoleColor.Red;
-            if (logLoss > 0.49f) Console.ForegroundColor = ConsoleColor.DarkRed;
-            Console.WriteLine(txt + " " + fNo + " correct : " + correctPercentage + " logloss = " + logLoss);
-            if (logLoss > 0.45f) Console.ForegroundColor = ConsoleColor.White;
+            if (averageLoss < 0.44f) Console.ForegroundColor = ConsoleColor.Green;
+            if (averageLoss > 0.44f) Console.ForegroundColor = ConsoleColor.Yellow;
+            if (averageLoss > 0.45f) Console.ForegroundColor = ConsoleColor.White;
+            if (averageLoss > 0.47f) Console.ForegroundColor = ConsoleColor.Red;
+            if (averageLoss > 0.49f) Console.ForegroundColor = ConsoleColor.DarkRed;
+            Console.WriteLine(txt + " " + fNo + "batch correct% : " + correctPercentage + " logloss last >1M recs : " + averageLoss);
+            Console.ForegroundColor = ConsoleColor.White;
         }
     }
 }

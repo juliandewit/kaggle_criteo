@@ -61,37 +61,25 @@ namespace Criteo
             }
             
             // We create an "ensemble" of a relunet and a maxout net.
-
             var gpuModule = new GPUModule();
             gpuModule.InitGPU();
-            var learnRate = 0.02f; // 0.04 also worked fine for me..
+            var learnRate = 0.03f; // 0.01 - 0.04 also worked fine for me, 0.04 was the fastest.
             var momentum = 0.5f; // Did not play with this much since 1st layer is without momentum for performance reasons.
-            var epochsBeforeMergeHoldout = 30; // When do we add the holdout set to the trainset (no more validation information)
-            var totalEpochs = 50; // How many epochs to train.. Usually I saw no improvement after 50
-
-            var maxoutNet = CriteoNet.CreateNetworkMaxout(gpuModule, Constants.MINIBATCH_SIZE); // Example network that worked fine
-            Train(scaledTrainPath, scaledTestPath, maxoutNet, learnRate, momentum, epochsBeforeMergeHoldout, totalEpochs);
-            // Make a net with smaller minibatchsize for submission..
-            var paramMaxoutPath = Path.Combine(dataDir, "paramsMaxout.xml");
-            var submissionMaxoutPath = Path.Combine(dataDir, "submissionMaxout.csv");
-            maxoutNet.SaveWeightsAndParams(paramMaxoutPath);
-            maxoutNet = CriteoNet.CreateNetworkRelu(gpuModule, 15);
-            maxoutNet.LoadStructureWeightsAndParams(paramMaxoutPath);
-            MakeSubmission(maxoutNet, scaledTestPath, submissionMaxoutPath, batchSize: 15);
+            var epochsBeforeMergeHoldout = 15; // When do we add the holdout set to the trainset (no more validation information after this)
+            var totalEpochs = 20; // How many epochs to train.. Usually I saw no improvement after 40
+            var trainRecords = OneHotRecordReadOnly.LoadBinary(scaledTrainPath);
 
             var reluNet = CriteoNet.CreateNetworkRelu(gpuModule, Constants.MINIBATCH_SIZE); // Example network that worked fine
-            Train(scaledTrainPath, scaledTestPath, reluNet, learnRate, momentum, epochsBeforeMergeHoldout, totalEpochs);
-            // Make a net with smaller minibatchsize for submission..
-            var paramReluPath = Path.Combine(dataDir, "paramsRelu.xml");
+            Train(trainRecords, reluNet, learnRate, momentum, epochsBeforeMergeHoldout, totalEpochs);
             var submissionReluPath = Path.Combine(dataDir, "submissionRelu.csv");
-            reluNet.SaveWeightsAndParams(paramReluPath);
-            reluNet = CriteoNet.CreateNetworkRelu(gpuModule, 15);
-            reluNet.LoadStructureWeightsAndParams(paramReluPath);
-            MakeSubmission(reluNet, scaledTestPath, submissionReluPath, batchSize: 15);
+            MakeSubmission(reluNet, scaledTestPath, submissionReluPath);
+            
+            var maxoutNet = CriteoNet.CreateNetworkMaxout(gpuModule, Constants.MINIBATCH_SIZE); // Example network that worked fine
+            Train(trainRecords, maxoutNet, learnRate, momentum, epochsBeforeMergeHoldout, totalEpochs);
+            var submissionMaxoutPath = Path.Combine(dataDir, "submissionMaxout.csv");
+            MakeSubmission(maxoutNet, scaledTestPath, submissionMaxoutPath);
 
-
-
-            // Now make the combined submission
+            // Now make a combined submission
             var submissionCombinedPath = Path.Combine(dataDir, "submissionCombined.csv");
             CombineSubmission(submissionCombinedPath, new string[] { submissionReluPath, submissionMaxoutPath });
 
@@ -100,19 +88,18 @@ namespace Criteo
         }
 
 
-        public static void Train(string trainSetPath, string testSetPath, Network net, float learnRate = 0.02f, float momentum = 0.5f, int epochsBeforeMergeHoldout = 30, int totalEpochs = 50)
+        public static void Train(List<OneHotRecordReadOnly> allTrainRecords, Network net, float learnRate = 0.02f, float momentum = 0.5f, int epochsBeforeMergeHoldout = 30, int totalEpochs = 50)
         {
             var module = new GPUModule();
             module.InitGPU();
-            var trainRecords = OneHotRecordReadOnly.LoadBinary(trainSetPath );
 
             // use roughly last day for validation
-            var trainCount = trainRecords.Count;
+            var trainCount = allTrainRecords.Count;
             var holdoutCount = trainCount / 7;
             trainCount = trainCount - holdoutCount;
-            var holdoutRecords = trainRecords.Skip(trainCount).ToList();
+            var holdoutRecords = allTrainRecords.Skip(trainCount).ToList();
             holdoutRecords.Shuffle();
-            trainRecords = trainRecords.Take(trainCount).ToList();
+            var trainRecords = allTrainRecords.Take(trainCount).ToList();
 
             var trainProvider = new OneHotRecordProvider(module, trainRecords, "train", shuffleEveryEpoch: true);
             //var trainProvider = new ClicksProvider(module, TRAINSET_BIN_PATH, "train");
@@ -125,10 +112,10 @@ namespace Criteo
             trainer.Train(learnRate, momentum, epocsBeforeReport: 40, epocsBeforeMergeHoldout: epochsBeforeMergeHoldout, totalEpochs: totalEpochs );
         }
 
-        public static void MakeSubmission(Network network, string testsetPath, string targetPath, int batchSize)
+        public static void MakeSubmission(Network network, string testsetPath, string targetPath)
         {
             Console.WriteLine("Making submission");
-
+            var batchSize = Constants.MINIBATCH_SIZE;
             var recs = OneHotRecordReadOnly.LoadBinary(testsetPath);
             var sparseIndices = new int[batchSize][];
             var sparseValues = new float[batchSize][];
@@ -147,7 +134,7 @@ namespace Criteo
                 ids[recNo % batchSize] = id;
                 record.CopyDataToSparseArray(sparseIndices, sparseValues, recNo % batchSize);
 
-                if (((recNo + 1) % batchSize) == 0)
+                if ((((recNo + 1) % batchSize) == 0) || (recNo == (recs.Count-1)))
                 {
                     network.InputLayer.SetSparseData(sparseValues.ToList(), sparseIndices.ToList());
                     network.LabelLayer.SetData(labels);
@@ -155,19 +142,22 @@ namespace Criteo
                     network.CostLayer.CopyToHost();
                     for (var i = 0; i < batchSize; i++)
                     {
+                        if (ids[i] == 0) continue;
                         var chance = network.CostLayer.Outputs[i, 1];
                         var line = new SubmissionLine();
                         line.Id = ids[i];
                         line.Chance = chance;
                         submissionLines.Add(line);
                     }
+
+                    Array.Clear(ids, 0, ids.Length);
                 }
                 if (recNo % 100000 == 0)
                 {
                     Console.WriteLine("line : " + recNo);
                 }
             }
-            SubmissionLine.SaveSubmission(testsetPath, submissionLines);
+            SubmissionLine.SaveSubmission(targetPath, submissionLines);
         }
 
         public static void CombineSubmission(string dstPath, params string[] srcFiles)

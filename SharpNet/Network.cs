@@ -237,28 +237,26 @@ namespace SharpNet
             RegisterLoss(time, loss, train:true);
         }
 
-        public void RegisterLoss(long time, float loss, bool train = true, string savePathWhenBest = null)
+        public float RegisterLoss(long time, float loss, bool train = true, string savePathWhenBest = null)
         {
             var movingAverageList = (train) ? _movingAverageTrainLosses : _movingAverageTestLosses;
             var lossList = (train) ? TrainLosses : TestLosses;
-            if (movingAverageList.Count >= SamplesPerMovingAverage)
-            {
-                var currentLoss = movingAverageList.Average();
-                lossList.Add(currentLoss);
-                movingAverageList.Clear();
+            if (movingAverageList.Count >= SamplesPerMovingAverage) movingAverageList.RemoveAt(0);
+            movingAverageList.Add(loss);
+            var averageLoss = movingAverageList.Average();
+            lossList.Add(averageLoss);
 
-                if ((!train) && (savePathWhenBest != null))
+            if ((!train) && (savePathWhenBest != null))
+            {
+                var min = lossList.Min();
+                if (min == averageLoss)
                 {
-                    var min = lossList.Min();
-                    if (min == currentLoss)
-                    {
-                        Console.WriteLine("New best : " + min + "saving..");
-                        var bestLossTxt = ((int)Math.Round(min * 1000)).ToString();
-                        this.SaveWeightsAndParams(savePathWhenBest.Replace("XX", bestLossTxt));
-                    }
+                    Console.WriteLine("New best : " + min + "saving..");
+                    var bestLossTxt = ((int)Math.Round(min * 1000)).ToString();
+                    this.SaveWeightsAndParams(savePathWhenBest.Replace("XX", bestLossTxt));
                 }
             }
-            movingAverageList.Add(loss);
+            return averageLoss;
         }
 
         public long GetTrainRecordsPerSecond()

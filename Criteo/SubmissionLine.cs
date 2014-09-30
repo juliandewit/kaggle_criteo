@@ -29,16 +29,11 @@ namespace Criteo
             if (sortLines.Last().Id != 66042134) throw new Exception("Last is should be 66042134");
             if (sortLines.Count != 6042135) throw new Exception("# lines count should be 6042135");
 
-            var changeGt05 = false;
-            var changeGt10 = false;
             foreach (var line in sortLines) 
             {
                 builder.AppendLine(line.ToCsv());
             }
-
-            if (!changeGt05) throw new Exception("No chance gt 0.5");
-            if (changeGt10) throw new Exception("A chance gt 1.0");
-
+            
             File.WriteAllText(path, builder.ToString());
             Console.WriteLine("Submission written");
         }
