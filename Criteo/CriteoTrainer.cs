@@ -24,8 +24,8 @@ namespace Criteo
             get { return (OneHotRecordProvider)_testDataProvider; }
         }
 
-        bool pretest = true;
-        public void Train(float learnRate, float momentum, int epocsBeforeReport, int epocsBeforeMergeHoldout, int totalEpochs)
+        bool preHoldout = true;
+        public void Train(float learnRate, float momentum, int epocsBeforeReport, int epocsBeforeMergeHoldout, int totalEpochs, string workDir)
         {
             _network.TrainDataProvider = _trainDataProvider;
             _network.TestDataProvider = _testDataProvider;
@@ -42,11 +42,16 @@ namespace Criteo
                     Console.WriteLine(_network.GetTrainRecordsPerSecond() + " records per second");
                 }
 
-                if ((epochNo == epocsBeforeMergeHoldout)&& (pretest))
+                if ((epochNo == epocsBeforeMergeHoldout)&& (preHoldout))
                 {
                     Console.WriteLine("Merging holdout set to trainset");
-                    pretest = false;
+                    preHoldout = false;
                     TrainProvider._records.AddRange(TestProvider._records);
+                    if (!String.IsNullOrEmpty(workDir))
+                    {
+                        _network.SaveWeightsAndParams(workDir, "preholdout");
+                    }
+                    if (learnRate > 0.02f) learnRate = 0.02f;
                 }
                 
                 _network.Calculate(train: true);
