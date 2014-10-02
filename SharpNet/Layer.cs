@@ -10,7 +10,7 @@ namespace SharpNet
     public enum ArrayName { WeightUpdates, Weights, BiasWeights, Gradients, Cost, CorrectlyPredictedLabels, Outputs, BiasMultiplier, BiasWeightUpdates, SoftmaxMax, ConvBuffer, DropoutMask, LastWeightUpdates, LastBiasWeightUpdates, Noise, Winners };
     public class Layer
     {
-        public static int IdCounter = 1;
+        public int IdCounter = 1;
         Dictionary<ArrayName, CpuGpuArray> _Arrays = new Dictionary<ArrayName, CpuGpuArray>();
         Dictionary<ArrayName, CpuGpuArrayInt> _IntArrays = new Dictionary<ArrayName, CpuGpuArrayInt>();
         public string Id = "";

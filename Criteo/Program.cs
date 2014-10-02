@@ -67,37 +67,24 @@ namespace Criteo
             var momentum = 0.5f; // Did not play with this much since 1st layer is without momentum for performance reasons.
             var epochsBeforeMergeHoldout = 15; // When do we add the holdout set to the trainset (no more validation information after this)
             var totalEpochs = 20; // How many epochs to train.. Usually I saw no improvement after 40
-
-
-
-
-
-            
-            
+                        
             var trainRecords = OneHotRecordReadOnly.LoadBinary(scaledTrainPath);
 
             // Train a maxout network
             var maxoutNet = CriteoNet.CreateNetworkMaxout(gpuModule, Constants.MINIBATCH_SIZE); // Example network that worked fine
-            Train(trainRecords, maxoutNet, learnRate, momentum, epochsBeforeMergeHoldout, totalEpochs, tmpDir: dataDir);
+            Train(gpuModule, trainRecords, maxoutNet, learnRate, momentum, epochsBeforeMergeHoldout, totalEpochs, tmpDir: dataDir);
             maxoutNet.SaveWeightsAndParams(dataDir, "maxoutnet_done");
+            var submissionMaxoutPath = Path.Combine(dataDir, "submissionMaxout.csv");
+            MakeSubmission(maxoutNet, scaledTestPath, submissionMaxoutPath);
+            maxoutNet.Free();
 
             // Train a relu network
             var reluNet = CriteoNet.CreateNetworkRelu(gpuModule, Constants.MINIBATCH_SIZE); // Example network that worked fine
-            Train(trainRecords, reluNet, learnRate, momentum, epochsBeforeMergeHoldout, totalEpochs, tmpDir: dataDir);
+            Train(gpuModule, trainRecords, reluNet, learnRate, momentum, epochsBeforeMergeHoldout, totalEpochs, tmpDir: dataDir);
             reluNet.SaveWeightsAndParams(dataDir, "relunet_done");
-
-
-            // Create the maxout submission (~LB 0.456, train longer for better scores)
-            var submissionMaxoutNet = CriteoNet.CreateNetworkMaxout(gpuModule, Constants.MINIBATCH_SIZE); // Example network that worked fine
-            var submissionMaxoutPath = Path.Combine(dataDir, "submissionMaxout.csv");
-            submissionMaxoutNet.LoadStructureWeightsAndParams(dataDir, "maxoutnet_done");
-            MakeSubmission(submissionMaxoutNet, scaledTestPath, submissionMaxoutPath);
-
-            // Create the relu submission (~LB 0.455, train longer for better scores)
-            var submissionReluNet = CriteoNet.CreateNetworkRelu(gpuModule, Constants.MINIBATCH_SIZE); // Example network that worked fine
             var submissionReluPath = Path.Combine(dataDir, "submissionRelu.csv");
-            submissionReluNet.LoadStructureWeightsAndParams(dataDir, "relunet_done");
-            MakeSubmission(submissionReluNet, scaledTestPath, submissionReluPath);
+            MakeSubmission(reluNet, scaledTestPath, submissionReluPath);
+            reluNet.Free();
 
             // Now make a combined submission (~LB 0.45267)
             var submissionCombinedPath = Path.Combine(dataDir, "submissionCombined.csv");
@@ -108,11 +95,8 @@ namespace Criteo
         }
 
 
-        public static void Train(List<OneHotRecordReadOnly> allTrainRecords, Network net, float learnRate = 0.02f, float momentum = 0.5f, int epochsBeforeMergeHoldout = 30, int totalEpochs = 50, string tmpDir = null)
+        public static void Train(GPUModule module, List<OneHotRecordReadOnly> allTrainRecords, Network net, float learnRate = 0.02f, float momentum = 0.5f, int epochsBeforeMergeHoldout = 30, int totalEpochs = 50, string tmpDir = null)
         {
-            var module = new GPUModule();
-            module.InitGPU();
-
             // use roughly last day for validation
             var trainCount = allTrainRecords.Count;
             var holdoutCount = trainCount / 7;
@@ -144,6 +128,7 @@ namespace Criteo
 
             var submissionLines = new List<SubmissionLine>();
 
+            var firstBatch = true;
             for (var recNo = 0; recNo < recs.Count; recNo++)
             {
                 var record = recs[recNo];

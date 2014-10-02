@@ -51,6 +51,7 @@
     <Compile Include="DataProvider.cs" />
     <Compile Include="DropoutLayer.cs" />
     <Compile Include="FullyConnectedLayer.cs" />
+    <Compile Include="Helpers\AsciiDumper.cs" />
     <Compile Include="Helpers\NetSerializer.cs" />
     <Compile Include="Network.cs" />
     <Compile Include="SGDTrainer.cs" />

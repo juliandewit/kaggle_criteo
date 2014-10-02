@@ -23,10 +23,6 @@ namespace SharpNet
             {
                 AddArray(ArrayName.Outputs, batchesPerLoad * MinibatchSize, size);
             }
-            else
-            {
-            }
-            AddArray(ArrayName.Noise, batchesPerLoad * MinibatchSize, size);
         }
 
         public override void CopyToGpu()
