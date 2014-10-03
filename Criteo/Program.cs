@@ -70,21 +70,32 @@ namespace Criteo
                         
             var trainRecords = OneHotRecordReadOnly.LoadBinary(scaledTrainPath);
 
-            // Train a maxout network
+            // Train a maxout network (~LB 0.4556)
             var maxoutNet = CriteoNet.CreateNetworkMaxout(gpuModule, Constants.MINIBATCH_SIZE); // Example network that worked fine
             Train(gpuModule, trainRecords, maxoutNet, learnRate, momentum, epochsBeforeMergeHoldout, totalEpochs, tmpDir: dataDir);
             maxoutNet.SaveWeightsAndParams(dataDir, "maxoutnet_done");
-            var submissionMaxoutPath = Path.Combine(dataDir, "submissionMaxout.csv");
-            MakeSubmission(maxoutNet, scaledTestPath, submissionMaxoutPath);
             maxoutNet.Free();
 
-            // Train a relu network
+            // Train a relu network (~LB 0.4555)
             var reluNet = CriteoNet.CreateNetworkRelu(gpuModule, Constants.MINIBATCH_SIZE); // Example network that worked fine
             Train(gpuModule, trainRecords, reluNet, learnRate, momentum, epochsBeforeMergeHoldout, totalEpochs, tmpDir: dataDir);
             reluNet.SaveWeightsAndParams(dataDir, "relunet_done");
-            var submissionReluPath = Path.Combine(dataDir, "submissionRelu.csv");
-            MakeSubmission(reluNet, scaledTestPath, submissionReluPath);
             reluNet.Free();
+
+
+            // Create the maxout submission (~LB 0.456, train longer for better scores)
+            var submissionMaxoutNet = CriteoNet.CreateNetworkMaxout(gpuModule, Constants.MINIBATCH_SIZE); // Example network that worked fine
+            var submissionMaxoutPath = Path.Combine(dataDir, "submissionMaxout.csv");
+            submissionMaxoutNet.LoadStructureWeightsAndParams(dataDir, "maxoutnet_done");
+            MakeSubmission(submissionMaxoutNet, scaledTestPath, submissionMaxoutPath);
+
+            // Create the relu submission (~LB 0.455, train longer for better scores)
+            var submissionReluNet = CriteoNet.CreateNetworkRelu(gpuModule, Constants.MINIBATCH_SIZE); // Example network that worked fine
+            var submissionReluPath = Path.Combine(dataDir, "submissionRelu.csv");
+            submissionReluNet.LoadStructureWeightsAndParams(dataDir, "relunet_done");
+            MakeSubmission(submissionReluNet, scaledTestPath, submissionReluPath);
+
+
 
             // Now make a combined submission (~LB 0.45267)
             var submissionCombinedPath = Path.Combine(dataDir, "submissionCombined.csv");
