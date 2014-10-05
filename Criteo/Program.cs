@@ -95,8 +95,6 @@ namespace Criteo
             submissionReluNet.LoadStructureWeightsAndParams(dataDir, "relunet_done");
             MakeSubmission(submissionReluNet, scaledTestPath, submissionReluPath);
 
-
-
             // Now make a combined submission (~LB 0.45267)
             var submissionCombinedPath = Path.Combine(dataDir, "submissionCombined.csv");
             CombineSubmission(submissionCombinedPath, new string[] { submissionReluPath, submissionMaxoutPath });
